@@ -1,253 +1,308 @@
 import java.util.*;
 
-/* =========================================================
-   PROCESS CLASS
-   Stores all details related to a process
-   ========================================================= */
+// This class holds information about one process
 class Process {
-
-    int pid;                // Process ID
-    String name;            // Process Name
-    int arrivalTime;        // Arrival Time
-    int burstTime;          // Burst Time (CPU required)
-    int remainingTime;      // Remaining time (for Round Robin)
-
-    int completionTime;     // Completion Time
-    int turnaroundTime;     // Turnaround Time
-    int waitingTime;        // Waiting Time
-
-    // Constructor
-    Process(int pid, String name, int arrivalTime, int burstTime) {
-        this.pid = pid;
+    
+    // Basic information about the process
+    int id;                 // Process number (like 1, 2, 3)
+    String name;            // Process name (like P1, P2)
+    int arrivalTime;        // When process arrives (in seconds)
+    int burstTime;          // How long CPU needs to work on it
+    int timeLeft;           // How much work is still remaining
+    
+    // Results after scheduling
+    int finishTime;         // When process completes
+    int turnaroundTime;     // Total time from arrival to completion
+    int waitingTime;        // Time spent waiting for CPU
+    
+    // Create a new process
+    Process(int id, String name, int arrivalTime, int burstTime) {
+        this.id = id;
         this.name = name;
         this.arrivalTime = arrivalTime;
         this.burstTime = burstTime;
-        this.remainingTime = burstTime;
+        this.timeLeft = burstTime;  // Initially all work is remaining
     }
-
-    // Calculate Turnaround & Waiting Time
+    
+    // Calculate turnaround and waiting time
     void calculateTimes() {
-        turnaroundTime = completionTime - arrivalTime;
+        // Turnaround = finish time - arrival time
+        turnaroundTime = finishTime - arrivalTime;
+        
+        // Waiting = turnaround - actual work time
         waitingTime = turnaroundTime - burstTime;
     }
-
-    // Display process details in table format
-    void display() {
-        System.out.printf(
-                "%-5d %-8s %-10d %-10d %-12d %-12d %-10d%n",
-                pid, name, arrivalTime, burstTime,
-                completionTime, turnaroundTime, waitingTime
-        );
+    
+    // Print this process's details in a nice format
+    void printDetails() {
+        System.out.printf("%-5d %-8s %-10d %-10d %-12d %-12d %-10d%n",
+                id, name, arrivalTime, burstTime,
+                finishTime, turnaroundTime, waitingTime);
     }
 }
 
-/* =========================================================
-   CPU SCHEDULER CLASS
-   Implements FCFS, SJF, and Round Robin
-   ========================================================= */
+// Main class that runs all scheduling algorithms
 public class CPUScheduler {
-
-    static Scanner sc = new Scanner(System.in);
-    static ArrayList<Process> processes = new ArrayList<>();
-
+    
+    // Scanner to read user input
+    static Scanner input = new Scanner(System.in);
+    
+    // List to store all processes
+    static ArrayList<Process> processList = new ArrayList<>();
+    
+    // Main method - program starts here
     public static void main(String[] args) {
-
+        
+        // Keep showing menu until user exits
         while (true) {
-            System.out.println("\n=========== CPU SCHEDULING SIMULATOR ===========");
-            System.out.println("1. Load Sample Data");
-            System.out.println("2. View Processes");
-            System.out.println("3. FCFS Scheduling");
-            System.out.println("4. SJF Scheduling");
-            System.out.println("5. Round Robin Scheduling");
-            System.out.println("6. Exit");
-            System.out.print("Enter choice: ");
-
-            int choice = sc.nextInt();
-
-            switch (choice) {
-                case 1 -> loadSampleData();
-                case 2 -> viewProcesses();
-                case 3 -> fcfs();
-                case 4 -> sjf();
-                case 5 -> roundRobin();
-                case 6 -> {
-                    System.out.println("Thank you!");
-                    return;
-                }
-                default -> System.out.println("Invalid choice!");
+            
+            // Display menu options
+            System.out.println("\n===== CPU SCHEDULING SIMULATOR =====");
+            System.out.println("1. Load Sample Processes");
+            System.out.println("2. View All Processes");
+            System.out.println("3. Run FCFS (First Come First Serve)");
+            System.out.println("4. Run SJF (Shortest Job First)");
+            System.out.println("5. Run Round Robin");
+            System.out.println("6. Exit Program");
+            System.out.print("Choose an option: ");
+            
+            int choice = input.nextInt();
+            
+            // Do action based on user choice
+            if (choice == 1) {
+                loadSampleProcesses();
+            } else if (choice == 2) {
+                showAllProcesses();
+            } else if (choice == 3) {
+                runFCFS();
+            } else if (choice == 4) {
+                runSJF();
+            } else if (choice == 5) {
+                runRoundRobin();
+            } else if (choice == 6) {
+                System.out.println("Goodbye!");
+                break;  // Exit the program
+            } else {
+                System.out.println("Invalid choice! Try again.");
             }
         }
     }
-
-    /* ================= SAMPLE DATA ================= */
-    static void loadSampleData() {
-        processes.clear();
-        processes.add(new Process(1, "P1", 0, 5));
-        processes.add(new Process(2, "P2", 1, 3));
-        processes.add(new Process(3, "P3", 2, 8));
-        processes.add(new Process(4, "P4", 3, 6));
-        System.out.println("✓ Sample data loaded");
+    
+    // Load some example processes into the list
+    static void loadSampleProcesses() {
+        processList.clear();  // Remove old processes
+        
+        // Add 4 sample processes
+        processList.add(new Process(1, "P1", 0, 5));
+        processList.add(new Process(2, "P2", 1, 3));
+        processList.add(new Process(3, "P3", 2, 8));
+        processList.add(new Process(4, "P4", 3, 6));
+        
+        System.out.println("✓ Loaded 4 sample processes!");
     }
-
-    /* ================= VIEW PROCESSES ================= */
-    static void viewProcesses() {
-        if (processes.isEmpty()) {
-            System.out.println("No processes available!");
+    
+    // Show all processes in a table
+    static void showAllProcesses() {
+        
+        // Check if list is empty
+        if (processList.isEmpty()) {
+            System.out.println("No processes available. Load sample data first!");
             return;
         }
-
+        
+        // Print table header
         System.out.printf("%-5s %-8s %-10s %-10s%n",
-                "PID", "Name", "Arrival", "Burst");
-
-        for (Process p : processes) {
+                "ID", "Name", "Arrival", "Burst");
+        
+        // Print each process
+        for (Process p : processList) {
             System.out.printf("%-5d %-8s %-10d %-10d%n",
-                    p.pid, p.name, p.arrivalTime, p.burstTime);
+                    p.id, p.name, p.arrivalTime, p.burstTime);
         }
     }
-
-    /* ================= FCFS =================
-       First Come First Serve
-       Processes are executed in order of arrival
-       ======================================= */
-    static void fcfs() {
-        ArrayList<Process> temp = copyProcesses();
-
-        // Sort by arrival time
-        temp.sort(Comparator.comparingInt(p -> p.arrivalTime));
-
-        int time = 0;
-
-        for (Process p : temp) {
-            // CPU waits if process arrives later
-            time = Math.max(time, p.arrivalTime);
-
-            // Execute process
-            time += p.burstTime;
-
-            p.completionTime = time;
+    
+    // ALGORITHM 1: First Come First Serve
+    // Execute processes in the order they arrive
+    static void runFCFS() {
+        
+        // Make a copy so we don't change original data
+        ArrayList<Process> workList = copyAllProcesses();
+        
+        // Sort by arrival time (earliest first)
+        workList.sort((p1, p2) -> p1.arrivalTime - p2.arrivalTime);
+        
+        int currentTime = 0;  // CPU clock starts at 0
+        
+        // Process each job one by one
+        for (Process p : workList) {
+            
+            // If process hasn't arrived yet, CPU waits
+            if (currentTime < p.arrivalTime) {
+                currentTime = p.arrivalTime;
+            }
+            
+            // CPU works on this process
+            currentTime = currentTime + p.burstTime;
+            
+            // Record when it finished
+            p.finishTime = currentTime;
             p.calculateTimes();
         }
-
-        displayResult("FCFS", temp);
+        
+        // Show the results
+        showResults("FCFS (First Come First Serve)", workList);
     }
-
-    /* ================= SJF (Non-Preemptive) =================
-       Shortest Job First
-       Process with smallest burst time executes first
-       ======================================================= */
-    static void sjf() {
-        ArrayList<Process> temp = copyProcesses();
-        int n = temp.size();
-
-        boolean[] completed = new boolean[n];
-        int done = 0;
-        int time = 0;
-
-        while (done < n) {
-            int index = -1;
-            int minBurst = Integer.MAX_VALUE;
-
-            // Find shortest available job
-            for (int i = 0; i < n; i++) {
-                Process p = temp.get(i);
-                if (!completed[i] && p.arrivalTime <= time && p.burstTime < minBurst) {
-                    minBurst = p.burstTime;
-                    index = i;
+    
+    // ALGORITHM 2: Shortest Job First (Non-Preemptive)
+    // Always pick the shortest job that has arrived
+    static void runSJF() {
+        
+        ArrayList<Process> workList = copyAllProcesses();
+        int totalProcesses = workList.size();
+        
+        // Track which processes are done
+        boolean[] isDone = new boolean[totalProcesses];
+        int completedCount = 0;
+        int currentTime = 0;
+        
+        // Keep going until all processes are done
+        while (completedCount < totalProcesses) {
+            
+            int shortestIndex = -1;      // Index of shortest job
+            int shortestBurst = 999999;  // Very large number
+            
+            // Look through all processes
+            for (int i = 0; i < totalProcesses; i++) {
+                Process p = workList.get(i);
+                
+                // Check if this process is:
+                // 1. Not done yet
+                // 2. Has arrived
+                // 3. Has shorter burst time than current shortest
+                if (!isDone[i] && p.arrivalTime <= currentTime && p.burstTime < shortestBurst) {
+                    shortestBurst = p.burstTime;
+                    shortestIndex = i;
                 }
             }
-
-            // If no process is ready, CPU is idle
-            if (index == -1) {
-                time++;
+            
+            // If no process is ready, CPU is idle (move time forward)
+            if (shortestIndex == -1) {
+                currentTime++;
             } else {
-                Process p = temp.get(index);
-                time += p.burstTime;
-                p.completionTime = time;
+                // Execute the shortest job
+                Process p = workList.get(shortestIndex);
+                currentTime = currentTime + p.burstTime;
+                p.finishTime = currentTime;
                 p.calculateTimes();
-                completed[index] = true;
-                done++;
+                
+                // Mark as completed
+                isDone[shortestIndex] = true;
+                completedCount++;
             }
         }
-
-        displayResult("SJF", temp);
+        
+        showResults("SJF (Shortest Job First)", workList);
     }
-
-    /* ================= ROUND ROBIN =================
-       Each process gets fixed time quantum
-       ================================================= */
-    static void roundRobin() {
-        System.out.print("Enter Time Quantum: ");
-        int quantum = sc.nextInt();
-
-        ArrayList<Process> temp = copyProcesses();
-        temp.sort(Comparator.comparingInt(p -> p.arrivalTime));
-
-        Queue<Process> queue = new LinkedList<>();
-        int time = temp.get(0).arrivalTime;
-        int finished = 0;
-
-        queue.add(temp.get(0));
-
-        while (finished < temp.size()) {
-
-            if (queue.isEmpty()) {
-                time++;
+    
+    // ALGORITHM 3: Round Robin
+    // Each process gets a small time slice (quantum)
+    static void runRoundRobin() {
+        
+        System.out.print("Enter time quantum (e.g., 2): ");
+        int timeQuantum = input.nextInt();
+        
+        ArrayList<Process> workList = copyAllProcesses();
+        
+        // Sort by arrival time
+        workList.sort((p1, p2) -> p1.arrivalTime - p2.arrivalTime);
+        
+        // Queue holds processes ready to execute
+        Queue<Process> readyQueue = new LinkedList<>();
+        
+        int currentTime = workList.get(0).arrivalTime;
+        int finishedCount = 0;
+        
+        // Add first process to queue
+        readyQueue.add(workList.get(0));
+        
+        // Keep running until all processes finish
+        while (finishedCount < workList.size()) {
+            
+            // If queue is empty, move time forward
+            if (readyQueue.isEmpty()) {
+                currentTime++;
                 continue;
             }
-
-            Process p = queue.poll();
-
-            // Execute process
-            int exec = Math.min(quantum, p.remainingTime);
-            p.remainingTime -= exec;
-            time += exec;
-
-            // Add newly arrived processes
-            for (Process pr : temp) {
-                if (pr.arrivalTime <= time && pr.remainingTime > 0 && !queue.contains(pr)) {
-                    queue.add(pr);
+            
+            // Get next process from queue
+            Process currentProcess = readyQueue.poll();
+            
+            // Execute for quantum time (or less if process finishes)
+            int executeTime = Math.min(timeQuantum, currentProcess.timeLeft);
+            currentProcess.timeLeft = currentProcess.timeLeft - executeTime;
+            currentTime = currentTime + executeTime;
+            
+            // Check if any new processes have arrived
+            for (Process p : workList) {
+                // If process arrived during this time and still has work
+                if (p.arrivalTime <= currentTime && p.timeLeft > 0 && !readyQueue.contains(p) && p != currentProcess) {
+                    readyQueue.add(p);
                 }
             }
-
-            // If process still has work left
-            if (p.remainingTime > 0) {
-                queue.add(p);
+            
+            // Check if current process is finished
+            if (currentProcess.timeLeft > 0) {
+                // Still has work left, put back in queue
+                readyQueue.add(currentProcess);
             } else {
-                p.completionTime = time;
-                p.calculateTimes();
-                finished++;
+                // Process is done!
+                currentProcess.finishTime = currentTime;
+                currentProcess.calculateTimes();
+                finishedCount++;
             }
         }
-
-        displayResult("ROUND ROBIN", temp);
+        
+        showResults("ROUND ROBIN (Time Quantum = " + timeQuantum + ")", workList);
     }
-
-    /* ================= UTIL METHODS ================= */
-    static ArrayList<Process> copyProcesses() {
-        ArrayList<Process> list = new ArrayList<>();
-        for (Process p : processes) {
-            list.add(new Process(p.pid, p.name, p.arrivalTime, p.burstTime));
+    
+    // Make a copy of all processes (so we don't modify originals)
+    static ArrayList<Process> copyAllProcesses() {
+        ArrayList<Process> newList = new ArrayList<>();
+        
+        for (Process p : processList) {
+            newList.add(new Process(p.id, p.name, p.arrivalTime, p.burstTime));
         }
-        return list;
+        
+        return newList;
     }
-
-    static void displayResult(String algo, ArrayList<Process> list) {
-        System.out.println("\n========== " + algo + " ==========");
-        System.out.printf(
-                "%-5s %-8s %-10s %-10s %-12s %-12s %-10s%n",
-                "PID", "Name", "Arrival", "Burst",
-                "Completion", "Turnaround", "Waiting"
-        );
-
-        double totalWT = 0, totalTAT = 0;
-
-        for (Process p : list) {
-            p.display();
-            totalWT += p.waitingTime;
-            totalTAT += p.turnaroundTime;
+    
+    // Display scheduling results in a nice table
+    static void showResults(String algorithmName, ArrayList<Process> resultList) {
+        
+        System.out.println("\n========== " + algorithmName + " ==========");
+        
+        // Print header
+        System.out.printf("%-5s %-8s %-10s %-10s %-12s %-12s %-10s%n",
+                "ID", "Name", "Arrival", "Burst",
+                "Finish", "Turnaround", "Waiting");
+        
+        double totalWaitingTime = 0;
+        double totalTurnaroundTime = 0;
+        
+        // Print each process result
+        for (Process p : resultList) {
+            p.printDetails();
+            totalWaitingTime = totalWaitingTime + p.waitingTime;
+            totalTurnaroundTime = totalTurnaroundTime + p.turnaroundTime;
         }
-
-        System.out.printf("\nAverage Waiting Time: %.2f%n", totalWT / list.size());
-        System.out.printf("Average Turnaround Time: %.2f%n", totalTAT / list.size());
+        
+        // Calculate and show averages
+        int numberOfProcesses = resultList.size();
+        double avgWaiting = totalWaitingTime / numberOfProcesses;
+        double avgTurnaround = totalTurnaroundTime / numberOfProcesses;
+        
+        System.out.println("\n--- Summary ---");
+        System.out.printf("Average Waiting Time: %.2f%n", avgWaiting);
+        System.out.printf("Average Turnaround Time: %.2f%n", avgTurnaround);
     }
 }
