@@ -205,65 +205,74 @@ public class CPUScheduler {
     }
     
     // ALGORITHM 3: Round Robin
-    // Each process gets a small time slice (quantum)
     static void runRoundRobin() {
-        
-        System.out.print("Enter time quantum (e.g., 2): ");
-        int timeQuantum = input.nextInt();
-        
-        ArrayList<Process> workList = copyAllProcesses();
-        
-        // Sort by arrival time
-        workList.sort((p1, p2) -> p1.arrivalTime - p2.arrivalTime);
-        
-        // Queue holds processes ready to execute
-        Queue<Process> readyQueue = new LinkedList<>();
-        
-        int currentTime = workList.get(0).arrivalTime;
-        int finishedCount = 0;
-        
-        // Add first process to queue
-        readyQueue.add(workList.get(0));
-        
-        // Keep running until all processes finish
-        while (finishedCount < workList.size()) {
-            
-            // If queue is empty, move time forward
-            if (readyQueue.isEmpty()) {
-                currentTime++;
-                continue;
-            }
-            
-            // Get next process from queue
-            Process currentProcess = readyQueue.poll();
-            
-            // Execute for quantum time (or less if process finishes)
-            int executeTime = Math.min(timeQuantum, currentProcess.timeLeft);
-            currentProcess.timeLeft = currentProcess.timeLeft - executeTime;
-            currentTime = currentTime + executeTime;
-            
-            // Check if any new processes have arrived
-            for (Process p : workList) {
-                // If process arrived during this time and still has work
-                if (p.arrivalTime <= currentTime && p.timeLeft > 0 && !readyQueue.contains(p) && p != currentProcess) {
-                    readyQueue.add(p);
-                }
-            }
-            
-            // Check if current process is finished
-            if (currentProcess.timeLeft > 0) {
-                // Still has work left, put back in queue
-                readyQueue.add(currentProcess);
-            } else {
-                // Process is done!
-                currentProcess.finishTime = currentTime;
-                currentProcess.calculateTimes();
-                finishedCount++;
-            }
+
+    // Ask user for time quantum
+    System.out.print("Enter time quantum: ");
+    int timeQuantum = input.nextInt();
+
+    // Make a copy of processes so original data is safe
+    ArrayList<Process> workList = copyAllProcesses();
+
+    // Sort processes by arrival time
+    workList.sort((p1, p2) -> p1.arrivalTime - p2.arrivalTime);
+
+    // Queue to store ready processes
+    Queue<Process> readyQueue = new LinkedList<>();
+
+    int currentTime = 0;     // CPU clock
+    int finishedCount = 0;   // Number of completed processes
+    int index = 0;           // Points to next arriving process
+
+    // Run until all processes are finished
+    while (finishedCount < workList.size()) {
+
+        // Step 1: Add all processes that have arrived to the queue
+        while (index < workList.size() &&
+               workList.get(index).arrivalTime <= currentTime) {
+
+            readyQueue.add(workList.get(index));
+            index++;
         }
-        
-        showResults("ROUND ROBIN (Time Quantum = " + timeQuantum + ")", workList);
+
+        // Step 2: If no process is ready, CPU is idle
+        if (readyQueue.isEmpty()) {
+            currentTime++;
+            continue;
+        }
+
+        // Step 3: Take first process from queue
+        Process currentProcess = readyQueue.poll();
+
+        // Step 4: Execute for time quantum or remaining time
+        int executeTime = Math.min(timeQuantum, currentProcess.timeLeft);
+        currentProcess.timeLeft -= executeTime;
+        currentTime += executeTime;
+
+        // Step 5: Check if new processes arrived during execution
+        while (index < workList.size() &&
+               workList.get(index).arrivalTime <= currentTime) {
+
+            readyQueue.add(workList.get(index));
+            index++;
+        }
+
+        // Step 6: If process still has work, put it back in queue
+        if (currentProcess.timeLeft > 0) {
+            readyQueue.add(currentProcess);
+        }
+        // Step 7: If process finished, record times
+        else {
+            currentProcess.finishTime = currentTime;
+            currentProcess.calculateTimes();
+            finishedCount++;
+        }
     }
+
+    // Show final result
+    showResults("ROUND ROBIN (Quantum = " + timeQuantum + ")", workList);
+}
+
     
     // Make a copy of all processes (so we don't modify originals)
     static ArrayList<Process> copyAllProcesses() {
